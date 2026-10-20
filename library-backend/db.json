@@ -1,0 +1,50 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "Seema",
+      "password": "soni28",
+      "role": "faculty"
+    },
+    {
+      "id": 2,
+      "username": "shruti",
+      "password": "1234",
+      "role": "student"
+    }
+  ],
+  "subjects": [
+    {
+      "id": 1,
+      "name": "maths",
+      "facultyId": 1
+    }
+  ],
+  "enrollments": [
+    {
+      "studentId": 2,
+      "subjectId": 1
+    }
+  ],
+  "units": [
+    {
+      "id": 1,
+      "subjectId": 1,
+      "name": "integration"
+    },
+    {
+      "id": 2,
+      "subjectId": 1,
+      "name": "integration"
+    }
+  ],
+  "resources": [
+    {
+      "id": 1,
+      "unitId": 1,
+      "title": "calculus",
+      "type": "PPT",
+      "location": "https://1234calculus"
+    }
+  ]
+}
