@@ -1,14 +1,21 @@
 import { useState, useEffect, useCallback } from "react";
-import { getSubject, addUnit, addResource } from "../data/api";
+import {
+  getSubject, addUnit, deleteUnit, addResource, deleteResource, openFile,
+} from "../data/api";
+
+const formatSize = (b) =>
+  b < 1024 * 1024 ? Math.max(1, Math.round(b / 1024)) + " KB" : (b / 1024 / 1024).toFixed(1) + " MB";
 
 export default function SubjectView({ subjectId, onBack }) {
   const [subject, setSubject] = useState(null);
   const [error, setError] = useState("");
   const [unitName, setUnitName] = useState("");
   const [unitId, setUnitId] = useState("");
-  const [type, setType] = useState("PDF");
   const [title, setTitle] = useState("");
-  const [location, setLocation] = useState("");
+  const [file, setFile] = useState(null);
+  const [fileKey, setFileKey] = useState(0);
+  const [link, setLink] = useState("");
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
   const load = useCallback(async () => {
@@ -35,11 +42,39 @@ export default function SubjectView({ subjectId, onBack }) {
     if (res.ok) { setUnitName(""); load(); }
   }
 
+  async function handleDeleteUnit(id) {
+    if (!window.confirm("Remove this unit and all its materials?")) return;
+    const res = await deleteUnit(subjectId, id);
+    setMessage(res.message);
+    if (res.ok) {
+      if (String(id) === String(unitId)) setUnitId("");
+      load();
+    }
+  }
   async function handleAddResource(e) {
     e.preventDefault();
-    const res = await addResource(subjectId, Number(unitId), title, type, location);
+    if (busy) return;
+    setBusy(true);
+    const res = await addResource(subjectId, unitId, title, file, link);
+    setBusy(false);
     setMessage(res.message);
-    if (res.ok) { setTitle(""); setLocation(""); load(); }
+    if (res.ok) {
+      setTitle(""); setLink(""); setFile(null);
+      setFileKey((k) => k + 1); // clears the file picker
+      load();
+    }
+  }
+
+  async function handleDeleteResource(rid) {
+    if (!window.confirm("Remove this material?")) return;
+    const res = await deleteResource(subjectId, rid);
+    setMessage(res.message);
+    if (res.ok) load();
+  }
+
+  async function handleOpen(r, download) {
+    const res = await openFile(r, download);
+    if (!res.ok) setMessage(res.message);
   }
 
   return (
@@ -53,15 +88,35 @@ export default function SubjectView({ subjectId, onBack }) {
 
         {subject.units.map((unit) => (
           <div className="unit-card" key={unit.id}>
-            <h3>{unit.name}</h3>
+            <div className="row between">
+              <h3>{unit.name}</h3>
+              {subject.canEdit && (
+                <button className="danger" onClick={() => handleDeleteUnit(unit.id)}>
+                  Remove unit
+                </button>
+              )}
+            </div>
             {unit.resources.length === 0 && (
               <p className="muted">(no material uploaded yet)</p>
             )}
             {unit.resources.map((r) => (
               <div className="resource-card" key={r.id}>
-                <strong>[{r.type}]</strong>
-                <span>{r.title}</span>
-                {r.type === "LINK" ? (
+                <div className="row between">
+                  <span>{r.title}</span>
+                  {subject.canEdit && (
+                    <button className="danger" onClick={() => handleDeleteResource(r.id)}>
+                      Remove
+                    </button>
+                  )}
+                </div>
+
+                {r.storedName ? (
+                  <div className="row">
+                    <small className="grow">{r.originalName} ({formatSize(r.size)})</small>
+                    <button onClick={() => handleOpen(r, false)}>View</button>
+                    <button onClick={() => handleOpen(r, true)}>Download</button>
+                  </div>
+                ) : /^https?:\/\//i.test(r.location) ? (
                   <a href={r.location} target="_blank" rel="noreferrer">{r.location}</a>
                 ) : (
                   <small>{r.location}</small>
@@ -92,17 +147,16 @@ export default function SubjectView({ subjectId, onBack }) {
                   <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
               </select>
-              <select value={type} onChange={(e) => setType(e.target.value)}>
-                <option>PDF</option>
-                <option>PPT</option>
-                <option>DOC</option>
-                <option>LINK</option>
-              </select>
               <input placeholder="Title" value={title}
                 onChange={(e) => setTitle(e.target.value)} />
-              <input placeholder="File name or URL" value={location}
-                onChange={(e) => setLocation(e.target.value)} />
-              <button type="submit">Add material</button>
+              <input key={fileKey} type="file"
+                onChange={(e) => setFile(e.target.files[0] || null)} />
+              <p className="muted">or paste a link instead</p>
+              <input placeholder="https://..." value={link}
+                onChange={(e) => setLink(e.target.value)} />
+              <button type="submit" disabled={busy}>
+                {busy ? "Uploading..." : "Add material"}
+              </button>
             </form>
           </div>
 

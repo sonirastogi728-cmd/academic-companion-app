@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import SubjectView from "./SubjectView";
-import { getSubjects, addSubject, enroll } from "../data/api";
-
+import { getSubjects, addSubject, enroll, deleteSubject } from "../data/api";
 export default function Dashboard({ user, onLogout }) {
   const isFaculty = user.role === "faculty";
   const [mine, setMine] = useState([]);
@@ -34,6 +33,13 @@ export default function Dashboard({ user, onLogout }) {
     setMessage(res.message);
     if (res.ok) load();
   }
+
+  async function handleDeleteSubject(id) {
+  if (!window.confirm("Remove this subject with all its units, materials and enrollments?")) return;
+  const res = await deleteSubject(id);
+  setMessage(res.message);
+  if (res.ok) load();
+}
 
   return (
     <div className="dash">
@@ -80,11 +86,18 @@ export default function Dashboard({ user, onLogout }) {
               <h3>{isFaculty ? "Your subjects" : "Enrolled subjects"}</h3>
               {mine.length === 0 && <p className="muted">No subjects here yet.</p>}
               {mine.map((s) => (
-                <button key={s.id} className="subject-btn" onClick={() => setSelectedId(s.id)}>
-                  {s.name}
-                  <small>by {s.facultyName}</small>
-                </button>
-              ))}
+  <div className="row" key={s.id}>
+    <button className="subject-btn" onClick={() => setSelectedId(s.id)}>
+      {s.name}
+      <small>by {s.facultyName}</small>
+    </button>
+    {isFaculty && (
+      <button className="danger" onClick={() => handleDeleteSubject(s.id)}>
+        Remove
+      </button>
+    )}
+  </div>
+))}
             </div>
           )}
 
