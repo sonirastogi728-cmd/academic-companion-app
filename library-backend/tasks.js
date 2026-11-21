@@ -181,11 +181,13 @@ module.exports = function mountTasks({ app, db, save, auth, canEdit, canAccess }
         pending.sort((x, y) => y.priority - x.priority);
         out.pending = pending;
 
-        const mineQ = db.quizResults.filter((r) => same(r.studentId, user.id));
-        const mineA = db.submissions.filter((s) => same(s.studentId, user.id));
-        const score = [...mineQ, ...mineA].reduce((t, r) => t + r.score, 0);
-        const total = [...mineQ, ...mineA].reduce((t, r) => t + r.total, 0);
-        out.overall = { score: round2(score), total: round2(total), percent: pct(score, total) };
+        const quizIds = new Set(quizzes.map((q) => q.id));
+const assignIds = new Set(assignments.map((a) => a.id));
+const mineQ = db.quizResults.filter((r) => same(r.studentId, user.id) && quizIds.has(r.quizId));
+const mineA = db.submissions.filter((s) => same(s.studentId, user.id) && assignIds.has(s.assignmentId));
+const score = [...mineQ, ...mineA].reduce((t, r) => t + r.score, 0);
+const total = [...mineQ, ...mineA].reduce((t, r) => t + r.total, 0);
+out.overall = { score: round2(score), total: round2(total), percent: pct(score, total) };
       }
       res.json(out);
     })
